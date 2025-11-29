@@ -10,8 +10,8 @@
   "scripts": {
     "prepare": "husky",
     "lint": "eslint \"**/*.{ts,tsx,js,jsx}\"",
-    "format": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "format:fix": "prettier write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format": "prettier --check \"**/*.{ts,tsx,js,jsx,json}\"",
+    "format:fix": "prettier write \"**/*.{ts,tsx,js,jsx,json}\"",
     "test": "echo \"No tests yet\"",
     "build": "npm run build -w frontend && npm run build -w backend"
   },
