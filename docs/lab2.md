@@ -137,26 +137,9 @@
 
 ---
 
-## 4. Опис взаємодії компонентів (текстова діаграма)
+## 4. Діаграма компонентів
 
-```
-[Frontend] --HTTP/REST--> [Backend API] --ORM/SQL--> [PostgreSQL]
-
-Frontend:
-  - Auth Module
-  - Courses Module
-  - Assignments Module
-  - Dashboard Module
-  - Shared/UI
-
-Backend:
-  - Auth Controller/Service
-  - User Service
-  - Courses Controller/Service
-  - Assignments Controller/Service
-  - Dashboard/Statistics Service
-  - Data Access Layer
-```
+<img width="991" height="788" alt="image" src="https://github.com/user-attachments/assets/688ed960-d8dc-455e-b946-c0b6f0d9482c" />
 
 ---
 
@@ -214,11 +197,10 @@ Backend:
 
 ---
 
-### 5.4. Текстове представлення ER-діаграми
+### 5.4. ER-діаграма
 
-```
-USERS (1) ----< (N) COURSES (1) ----< (N) ASSIGNMENTS
-```
+<img width="383" height="690" alt="image" src="https://github.com/user-attachments/assets/a5031204-825e-4b8e-9b3d-e99b23f648af" />
+
 
 ---
 
@@ -234,6 +216,9 @@ USERS (1) ----< (N) COURSES (1) ----< (N) ASSIGNMENTS
 6. Backend генерує JWT-токен та повертає його frontend-застосунку.
 7. Frontend зберігає токен та переводить користувача на сторінку дашборду.
 
+<img width="699" height="920" alt="image" src="https://github.com/user-attachments/assets/234ead94-4aa5-4dd6-b98e-c069459ecb5b" />
+
+
 ### 6.2. Авторизація користувача (Login)
 
 1. Користувач відкриває сторінку входу та вводить email і пароль.
@@ -244,22 +229,34 @@ USERS (1) ----< (N) COURSES (1) ----< (N) ASSIGNMENTS
 6. Токен повертається frontend-застосунку та зберігається локально.
 7. Користувач отримує доступ до захищених ресурсів системи.
 
+<img width="927" height="939" alt="image" src="https://github.com/user-attachments/assets/a7dda7a9-4e07-4e7e-84ea-375685f8d63a" />
+
+
 ### 6.3. Створення курсу
 
 1. Користувач надсилає запит `POST /api/courses`.
 2. Backend створює запис у таблиці `courses` з прив’язкою до користувача.
 3. Дані зберігаються в БД та повертаються клієнту.
 
+<img width="633" height="796" alt="image" src="https://github.com/user-attachments/assets/4bf5f44f-9bbd-43de-9876-211b152a142b" />
+
+
 ### 6.4. Створення та оновлення завдання
 
 1. При створенні завдання створюється новий запис у таблиці `assignments` зі статусом `planned`.
 2. При зміні статусу відбувається оновлення поля `status` та `updated_at`.
+
+<img width="788" height="1280" alt="image" src="https://github.com/user-attachments/assets/23783afb-ba3b-4b80-93af-902696a3751c" />
+
 
 ### 6.5. Формування дашборду
 
 1. Frontend викликає `GET /api/dashboard/overview`.
 2. Backend агрегує дані з таблиць `courses` та `assignments`.
 3. Повертається структура з найближчими дедлайнами та статистикою.
+
+<img width="490" height="831" alt="image" src="https://github.com/user-attachments/assets/05dfe10b-5440-491f-ab0a-56f980778d92" />
+
 
 ---
 
