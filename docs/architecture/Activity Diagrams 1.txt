@@ -1,0 +1,29 @@
+@startuml
+title StudyFlow - Activity: Create Course
+
+start
+:User opens Courses page;
+:User clicks "Add course";
+:User fills form (name, description);
+:Frontend validates input;
+
+if (Valid?) then (yes)
+  :Send POST /api/courses\nAuthorization: Bearer JWT;
+  :Backend validates JWT;
+  if (JWT valid?) then (yes)
+    :Backend creates record in courses\n(user_id from token);
+    :DB INSERT courses;
+    :Return created course (id, fields);
+    :Frontend updates courses list;
+    stop
+  else (no)
+    :Return 401 Unauthorized;
+    :Frontend shows auth error;
+    stop
+  endif
+else (no)
+  :Show validation errors;
+  stop
+endif
+
+@enduml

@@ -1,0 +1,39 @@
+@startuml
+title StudyFlow - Activity: Login
+
+start
+:User opens Login page;
+:User enters email + password;
+:Frontend validates input;
+
+if (Valid input?) then (yes)
+  :Send POST /api/auth/login\n{email, password};
+  :Backend validates request body;
+  :DB SELECT user by email;
+
+  if (User found?) then (yes)
+    :Compare password with password_hash;
+    if (Password correct?) then (yes)
+      :Backend creates JWT token;
+      :Return 200 OK\n{token, user};
+      :Frontend stores token (e.g. localStorage);
+      :Frontend updates auth state;
+      :Redirect to /dashboard;
+      stop
+    else (no)
+      :Return 401 Unauthorized\n\"Invalid credentials\";
+      :Frontend shows error message;
+      stop
+    endif
+  else (no)
+    :Return 401 Unauthorized\n\"Invalid credentials\";
+    :Frontend shows error message;
+    stop
+  endif
+
+else (no)
+  :Show validation errors;
+  stop
+endif
+
+@enduml

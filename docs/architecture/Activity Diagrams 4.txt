@@ -1,0 +1,33 @@
+@startuml
+title StudyFlow - Activity: Register
+
+start
+:User opens Register page;
+:User enters email + password (+ optional full_name);
+:Frontend validates input\n(email format, password length);
+
+if (Valid input?) then (yes)
+  :Send POST /api/auth/register\n{email, password, full_name};
+  :Backend validates request body;
+
+  if (Email already exists?) then (yes)
+    :Return 409 Conflict\n\"Email already registered\";
+    :Frontend shows error message;
+    stop
+  else (no)
+    :Backend hashes password;
+    :DB INSERT users;
+    :Backend creates JWT token;
+    :Return 201 Created\n{token, user};
+    :Frontend stores token (e.g. localStorage);
+    :Frontend updates auth state;
+    :Redirect to /dashboard;
+    stop
+  endif
+
+else (no)
+  :Show validation errors;
+  stop
+endif
+
+@enduml

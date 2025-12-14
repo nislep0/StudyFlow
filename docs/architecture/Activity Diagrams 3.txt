@@ -1,0 +1,28 @@
+@startuml
+title StudyFlow - Activity: Dashboard Overview (Aggregation)
+
+start
+:User opens Dashboard page;
+:Frontend sends GET /api/dashboard/overview\nAuthorization: Bearer JWT;
+:Backend validates JWT;
+
+if (JWT valid?) then (yes)
+  :Extract user_id from token;
+
+  :Query upcoming assignments\n(due_date within next N days,\nstatus in planned/in_progress);
+  :DB SELECT assignments JOIN courses;
+
+  :Query stats\n(total, done_last_30_days, overdue);
+  :DB SELECT aggregates;
+
+  :Backend builds overview DTO (JSON);
+  :Return 200 OK with overview;
+  :Frontend renders widgets\n(upcoming deadlines + stats);
+  stop
+else (no)
+  :Return 401 Unauthorized;
+  :Frontend redirects to Login;
+  stop
+endif
+
+@enduml

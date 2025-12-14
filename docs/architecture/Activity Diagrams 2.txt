@@ -1,0 +1,55 @@
+@startuml
+title StudyFlow - Activity: Create Assignment and Update Status
+
+start
+:User opens Assignments page;
+:User clicks "Add assignment";
+:User fills form (course, title, due_date, priority);
+:Frontend validates input;
+
+if (Valid?) then (yes)
+  :Send POST /api/assignments\nAuthorization: Bearer JWT;
+  :Backend validates JWT;
+  if (JWT valid?) then (yes)
+    :Backend checks course ownership\n(course.user_id == user_id);
+    if (Course belongs to user?) then (yes)
+      :DB INSERT assignments\n(status='planned');
+      :Return created assignment;
+      :Frontend updates assignments list;
+    else (no)
+      :Return 403 Forbidden;
+      :Frontend shows access error;
+      stop
+    endif
+  else (no)
+    :Return 401 Unauthorized;
+    :Frontend shows auth error;
+    stop
+  endif
+else (no)
+  :Show validation errors;
+  stop
+endif
+
+:User changes assignment status (e.g. Done);
+:Send PUT /api/assignments/{id}\n{status: 'done'};
+:Backend validates JWT;
+if (JWT valid?) then (yes)
+  :Backend checks assignment ownership\n(via course.user_id);
+  if (Assignment belongs to user?) then (yes)
+    :DB UPDATE assignments\n(set status, updated_at);
+    :Return updated assignment;
+    :Frontend refreshes assignment UI;
+    stop
+  else (no)
+    :Return 403 Forbidden;
+    :Frontend shows access error;
+    stop
+  endif
+else (no)
+  :Return 401 Unauthorized;
+  :Frontend shows auth error;
+  stop
+endif
+
+@enduml

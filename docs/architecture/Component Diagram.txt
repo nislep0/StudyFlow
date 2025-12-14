@@ -1,0 +1,53 @@
+@startuml
+title StudyFlow - Component Diagram
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+package "Frontend (React + TS)" {
+  [App Shell / Routing] as FE_Router
+  [Auth Module] as FE_Auth
+  [Courses Module] as FE_Courses
+  [Assignments Module] as FE_Assignments
+  [Dashboard Module] as FE_Dashboard
+  [Shared UI / API Client] as FE_Shared
+}
+
+package "Backend (Node.js + Express + TS)" {
+  [HTTP API (Express App)] as BE_API
+  [Auth Controller/Service] as BE_Auth
+  [User Service] as BE_User
+  [Courses Controller/Service] as BE_Courses
+  [Assignments Controller/Service] as BE_Assignments
+  [Dashboard/Statistics Service] as BE_Dashboard
+  [Data Access Layer] as BE_DAL
+}
+
+database "PostgreSQL" as DB
+
+' Frontend internal relations
+FE_Router --> FE_Auth
+FE_Router --> FE_Courses
+FE_Router --> FE_Assignments
+FE_Router --> FE_Dashboard
+FE_Auth --> FE_Shared
+FE_Courses --> FE_Shared
+FE_Assignments --> FE_Shared
+FE_Dashboard --> FE_Shared
+
+' API calls
+FE_Shared --> BE_API : HTTP/REST (JSON)\nAuthorization: Bearer JWT
+
+' Backend internal relations
+BE_API --> BE_Auth
+BE_API --> BE_Courses
+BE_API --> BE_Assignments
+BE_API --> BE_Dashboard
+
+BE_Auth --> BE_User
+BE_Courses --> BE_DAL
+BE_Assignments --> BE_DAL
+BE_Dashboard --> BE_DAL
+
+BE_DAL --> DB : SQL/ORM
+@enduml
