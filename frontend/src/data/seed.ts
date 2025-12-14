@@ -8,7 +8,7 @@ function nowIso() {
 function plusDays(days: number) {
   const date = new Date();
   date.setDate(date.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return date.toISOString().slice(0, 10);
 }
 
 export function seedData() {
