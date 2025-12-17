@@ -3,12 +3,18 @@
 import 'dotenv/config';
 import { defineConfig } from 'prisma/config';
 
+function requiredEnv(name: string): string {
+  const v = process.env[name];
+  if (!v) throw new Error('Missing env var: ${ name }');
+  return v;
+}
+
 export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: {
     path: 'prisma/migrations',
   },
   datasource: {
-    url: process.env['DATABASE_URL'],
+    url: requiredEnv('DATABASE_URL'),
   },
 });
