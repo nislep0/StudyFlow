@@ -11,6 +11,7 @@
     "moduleResolution": "nodenext",
     "target": "es2020",
     "types": [],
+    "iclude": ["src", "src/types"],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
