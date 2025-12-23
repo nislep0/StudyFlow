@@ -3,7 +3,15 @@ import { useData } from '../../context/DataContext';
 import type { AssignmentStatus, Priority } from '../../types/domain';
 
 export function AssignmentsPage() {
-  const { courses, assignments, addAssignment, updateAssignment, deleteAssignment } = useData();
+  const {
+    courses,
+    assignments,
+    addAssignment,
+    updateAssignment,
+    deleteAssignment,
+    isLoading,
+    error,
+  } = useData();
   const [courseId, setCourseId] = useState<string>('');
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState<string>('');
@@ -20,13 +28,22 @@ export function AssignmentsPage() {
       .sort((a, b) => (a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31'));
   }, [assignments, courseFilter, statusFilter]);
 
-  function onAddAssignment(e: React.FormEvent) {
+  async function onAddAssignment(e: React.FormEvent) {
     e.preventDefault();
     if (!courseId || !title.trim()) return;
-    addAssignment({ courseId, title: title.trim(), dueDate: dueDate || undefined, priority });
-    setTitle('');
-    setDueDate('');
-    setPriority('medium');
+    try {
+      await addAssignment({
+        courseId,
+        title: title.trim(),
+        dueDate: dueDate || undefined,
+        priority,
+      });
+      setTitle('');
+      setDueDate('');
+      setPriority('medium');
+    } catch (e: unknown) {
+      console.error(e);
+    }
   }
   function courseName(id: string) {
     return courses.find((course) => course.id === id)?.name ?? 'Unknown Course';
@@ -34,6 +51,8 @@ export function AssignmentsPage() {
   return (
     <div>
       <h2>Assignments</h2>
+      {isLoading && <p style={{ opacity: 0.8 }}>Loading...</p>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
       <section style={{ marginBottom: 20 }}>
         <h3>Add Assignment</h3>
         {courses.length === 0 ? (
@@ -94,7 +113,7 @@ export function AssignmentsPage() {
               <option value="all">All Statuses</option>
               <option value="planned">Planned</option>
               <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
+              <option value="done">Done</option>
             </select>
           </label>
         </div>
@@ -111,7 +130,7 @@ export function AssignmentsPage() {
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                     <strong>{assignment.title}</strong>
                     <span style={{ opacity: 0.7 }}>({courseName(assignment.courseId)})</span>
-                    {assignment.dueDate && <span>Due: {assignment.dueDate}</span>}
+                    {assignment.dueDate && <span>Due: {assignment.dueDate.slice(0, 10)}</span>}
                     <span>Priority: {assignment.priority}</span>
                   </div>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -127,7 +146,7 @@ export function AssignmentsPage() {
                       >
                         <option value="planned">Planned</option>
                         <option value="in_progress">In Progress</option>
-                        <option value="completed">Completed</option>
+                        <option value="done">Done</option>
                       </select>
                     </label>
                     <button onClick={() => deleteAssignment(assignment.id)}>Delete</button>

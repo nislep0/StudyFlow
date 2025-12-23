@@ -10,7 +10,8 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "target": "es2020",
-    "types": [],
+    "esModuleInterop": true,
+    "types": ["node"],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -41,5 +42,6 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true
-  }
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts"]
 }

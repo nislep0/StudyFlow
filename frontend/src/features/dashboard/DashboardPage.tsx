@@ -12,11 +12,11 @@ function addDaysISO(days: number) {
 }
 
 export function DashboardPage() {
-  const { courses, assignments } = useData();
+  const { courses, assignments, isLoading, error } = useData();
   const stats = useMemo(() => {
     const total = assignments.length;
-    const done = assignments.filter((a) => a.status === 'completed').length;
-    const inProgress = assignments.filter((a) => a.status !== 'completed').length;
+    const done = assignments.filter((a) => a.status === 'done').length;
+    const inProgress = assignments.filter((a) => a.status !== 'done').length;
     return { total, done, inProgress };
   }, [assignments]);
   const upcomingAssignments = useMemo(() => {
@@ -24,9 +24,15 @@ export function DashboardPage() {
     const toDate = addDaysISO(7);
     return assignments
       .filter((a) => a.dueDate)
-      .filter((a) => a.status !== 'completed')
-      .filter((a) => (a.dueDate as string) >= fromDate && (a.dueDate as string) <= toDate)
-      .sort((a, b) => (a.dueDate as string).localeCompare(b.dueDate as string));
+      .filter((a) => a.status !== 'done')
+      .filter(
+        (a) =>
+          (a.dueDate as string).slice(0, 10) >= fromDate &&
+          (a.dueDate as string).slice(0, 10) <= toDate,
+      )
+      .sort((a, b) =>
+        (a.dueDate as string).slice(0, 10).localeCompare((b.dueDate as string).slice(0, 10)),
+      );
   }, [assignments]);
   function courseName(id: string) {
     return courses.find((course) => course.id === id)?.name ?? 'Unknown Course';
@@ -34,13 +40,15 @@ export function DashboardPage() {
   return (
     <div>
       <h2>Dashboard</h2>
+      {isLoading && <p style={{ opacity: 0.8 }}>Loading...</p>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
       <section style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ border: '1px solid #ccc', padding: 10, borderRadius: 4, minWidth: 120 }}>
           <div style={{ opacity: 0.7 }}>Total Assignments</div>
           <div style={{ fontSize: 24, fontWeight: 'bold' }}>{stats.total}</div>
         </div>
         <div style={{ border: '1px solid #ccc', padding: 10, borderRadius: 4, minWidth: 120 }}>
-          <div style={{ opacity: 0.7 }}>Completed</div>
+          <div style={{ opacity: 0.7 }}>Done</div>
           <div style={{ fontSize: 24, fontWeight: 'bold' }}>{stats.done}</div>
         </div>
         <div style={{ border: '1px solid #ccc', padding: 10, borderRadius: 4, minWidth: 120 }}>
@@ -57,7 +65,7 @@ export function DashboardPage() {
             {upcomingAssignments.map((assignment) => (
               <li key={assignment.id}>
                 <strong>{assignment.title}</strong> for <em>{courseName(assignment.courseId)}</em> -
-                Due on {assignment.dueDate}
+                Due on {assignment.dueDate?.slice(0, 10)}
               </li>
             ))}
           </ul>

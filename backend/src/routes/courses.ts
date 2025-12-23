@@ -16,7 +16,11 @@ coursesRouter.post('/', async (req, res) => {
   const { name, description } = req.body as { name?: string; description?: string };
   if (!name?.trim()) return res.status(400).json({ message: 'name is required' });
   const course = await prisma.course.create({
-    data: { userId, name: name.trim(), description: description?.trim() || null },
+    data: {
+      userId,
+      name: name.trim(),
+      description: description?.trim() || null,
+    },
   });
   res.status(201).json(course);
 });
@@ -30,8 +34,8 @@ coursesRouter.put('/:id', async (req, res) => {
   const course = await prisma.course.update({
     where: { id },
     data: {
-      name: name?.trim() ?? existing.name,
-      description: description !== undefined ? description?.trim() || null : existing.description,
+      name: name !== undefined ? name.trim() || existing.name : existing.name,
+      description: description !== undefined ? description.trim() || null : existing.description,
     },
   });
   res.json(course);

@@ -1,0 +1,15 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:16
+    container_name: studyflow_db
+    environment:
+      POSTGRES_USER: studyflow
+      POSTGRES_PASSWORD: studyflow
+      POSTGRES_DB: studyflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - studyflow_pg:/var/lib/postgresql/data
+volumes:
+  studyflow_pg:

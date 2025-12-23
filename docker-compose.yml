@@ -1,8 +1,8 @@
-version: '3.9'
+version: "3.9"
+
 services:
   db:
     image: postgres:16
-    container_name: studyflow_db
     environment:
       POSTGRES_USER: studyflow
       POSTGRES_PASSWORD: studyflow
@@ -10,6 +10,38 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - studyflow_pg:/var/lib/postgresql/data
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studyflow -d studyflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://studyflow:studyflow@db:5432/studyflow?schema=public
+      JWT_SECRET: dev_secret_change_me
+      PORT: "3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE: /api
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+
 volumes:
-  studyflow_pg:
+  dbdata:

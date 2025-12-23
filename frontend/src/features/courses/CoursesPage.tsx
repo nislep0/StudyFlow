@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useData } from '../../context/DataContext';
 
 export function CoursesPage() {
-  const { courses, addCourse, updateCourse, deleteCourse } = useData();
+  const { courses, addCourse, updateCourse, deleteCourse, isLoading, error } = useData();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
@@ -11,27 +11,37 @@ export function CoursesPage() {
     [editingCourseId, courses],
   );
 
-  function onAddCourse(e: React.FormEvent) {
+  async function onAddCourse(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    addCourse(name.trim(), description.trim() || undefined);
-    setName('');
-    setDescription('');
+    try {
+      await addCourse(name.trim(), description.trim() || undefined);
+      setName('');
+      setDescription('');
+    } catch (e: unknown) {
+      console.error(e);
+    }
   }
   function startEditCourse(id: string) {
     setEditingCourseId(id);
   }
-  function applyEditCourse() {
+  async function applyEditCourse() {
     if (!editingCourse) return;
-    updateCourse(editingCourse.id, {
-      name: editingCourse.name,
-      description: editingCourse.description,
-    });
-    setEditingCourseId(null);
+    try {
+      await updateCourse(editingCourse.id, {
+        name: editingCourse.name,
+        description: editingCourse.description,
+      });
+      setEditingCourseId(null);
+    } catch (e: unknown) {
+      console.error(e);
+    }
   }
   return (
     <div>
       <h2>Courses</h2>
+      {isLoading && <p style={{ opacity: 0.8 }}>Loading...</p>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
       <section style={{ marginBottom: 20 }}>
         <h3>Add Course</h3>
         <form onSubmit={onAddCourse} style={{ display: 'grid', gap: 10, maxWidth: 520 }}>

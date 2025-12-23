@@ -32,6 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const newAuth = { userId: users.id };
     storage.setAuth(newAuth);
     setAuth(newAuth);
+    localStorage.setItem('studyflow_user_id', users.id);
+
     return { ok: true as const };
   }
   function register(email: string, password: string, fullName?: string) {
@@ -48,11 +50,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const newAuth = { userId: newUser.id };
     storage.setAuth(newAuth);
     setAuth(newAuth);
+    localStorage.setItem('studyflow_user_id', newUser.id);
     return { ok: true as const };
   }
   function logout() {
     storage.setAuth({ userId: null });
     setAuth({ userId: null });
+    localStorage.removeItem('studyflow_user_id');
   }
   const value: AuthContextValue = {
     user,

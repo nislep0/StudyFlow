@@ -1,5 +1,5 @@
 export type ID = string;
-export type AssignmentStatus = 'planned' | 'in_progress' | 'completed';
+export type AssignmentStatus = 'planned' | 'in_progress' | 'done';
 export type Priority = 'low' | 'medium' | 'high';
 export type User = {
   id: ID;

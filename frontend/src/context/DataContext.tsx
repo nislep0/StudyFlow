@@ -1,80 +1,106 @@
-import React, { createContext, useState, useContext, useMemo } from 'react';
-import { storage } from '../data/storage';
+import React, { createContext, useState, useContext, useMemo, useEffect } from 'react';
+import { apiFetch } from '../shared/api/client';
 import type { Assignment, Courses, Priority } from '../types/domain';
 import { useAuth } from './AuthContext';
 
 type DataContextValue = {
   courses: Courses[];
   assignments: Assignment[];
+  isLoading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
 
-  addCourse: (name: string, description?: string) => void;
-  updateCourse: (id: string, patch: Partial<Pick<Courses, 'name' | 'description'>>) => void;
-  deleteCourse: (id: string) => void;
+  addCourse: (name: string, description?: string) => Promise<void>;
+  updateCourse: (
+    id: string,
+    patch: Partial<Pick<Courses, 'name' | 'description'>>,
+  ) => Promise<void>;
+  deleteCourse: (id: string) => Promise<void>;
   addAssignment: (input: {
     courseId: string;
     title: string;
     description?: string;
     dueDate?: string;
     priority: Priority;
-  }) => void;
+  }) => Promise<void>;
   updateAssignment: (
     id: string,
     patch: Partial<Pick<Assignment, 'title' | 'description' | 'dueDate' | 'priority' | 'status'>>,
-  ) => void;
-  deleteAssignment: (id: string) => void;
+  ) => Promise<void>;
+  deleteAssignment: (id: string) => Promise<void>;
 };
 const DataContext = createContext<DataContextValue | null>(null);
 
-function nowIso() {
-  return new Date().toISOString();
-}
-function generateId(prefix: string) {
-  return `${prefix}_${Math.random().toString(36).slice(2)}_${Date.now()}`;
-}
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [coursesState, setCoursesState] = useState(() => storage.getCourses());
-  const [assignmentsState, setAssignmentsState] = useState(() => storage.getAssignments());
+  const [coursesState, setCoursesState] = useState<Courses[]>([]);
+  const [assignmentsState, setAssignmentsState] = useState<Assignment[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const courses = useMemo(() => {
     if (!user) return [];
-    return coursesState.filter((c) => c.userId === user.id);
+    return coursesState;
   }, [coursesState, user]);
   const assignments = useMemo(() => {
     if (!user) return [];
-    return assignmentsState.filter((a) => a.userId === user.id);
+    return assignmentsState;
   }, [assignmentsState, user]);
 
-  function persistCourses(newCourses: Courses[]) {
-    setCoursesState(newCourses);
-    storage.setCourses(newCourses);
+  async function reload() {
+    if (!user) {
+      setCoursesState([]);
+      setAssignmentsState([]);
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [c, a] = await Promise.all([
+        apiFetch<Courses[]>('/courses'),
+        apiFetch<Assignment[]>('/assignments'),
+      ]);
+      setCoursesState(c);
+      setAssignmentsState(a);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(e?.message ?? 'Failed to load data');
+      } else {
+        setError('unknown error');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   }
-  function persistAssignments(newAssignments: Assignment[]) {
-    setAssignmentsState(newAssignments);
-    storage.setAssignments(newAssignments);
-  }
-  function addCourse(name: string, description?: string) {
+
+  useEffect(() => {
+    void reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  async function addCourse(name: string, description?: string) {
     if (!user) return;
-    const newCourse: Courses = {
-      id: generateId('course'),
-      userId: user.id,
-      name,
-      description,
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    };
-    persistCourses([...coursesState, newCourse]);
+    const created = await apiFetch<Courses>('/courses', {
+      method: 'POST',
+      body: JSON.stringify({ name, description }),
+    });
+    setCoursesState((prev) => [created, ...prev]);
   }
-  function updateCourse(id: string, patch: Partial<Pick<Courses, 'name' | 'description'>>) {
-    const newCourses = coursesState.map((c) =>
-      c.id === id ? { ...c, ...patch, updatedAt: nowIso() } : c,
-    );
-    persistCourses(newCourses);
+
+  async function updateCourse(id: string, patch: Partial<Pick<Courses, 'name' | 'description'>>) {
+    const updated = await apiFetch<Courses>(`/courses/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(patch),
+    });
+    setCoursesState((prev) => prev.map((c) => (c.id === id ? updated : c)));
   }
-  function deleteCourse(id: string) {
-    persistCourses(coursesState.filter((c) => c.id !== id));
-    persistAssignments(assignmentsState.filter((a) => a.courseId !== id));
+
+  async function deleteCourse(id: string) {
+    await apiFetch<void>(`/courses/${id}`, { method: 'DELETE' });
+    setCoursesState((prev) => prev.filter((c) => c.id !== id));
+    setAssignmentsState((prev) => prev.filter((a) => a.courseId !== id));
   }
-  function addAssignment(input: {
+
+  async function addAssignment(input: {
     courseId: string;
     title: string;
     description?: string;
@@ -82,35 +108,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     priority: Priority;
   }) {
     if (!user) return;
-    const newAssignment: Assignment = {
-      id: generateId('assignment'),
-      userId: user.id,
-      courseId: input.courseId,
-      title: input.title,
-      description: input.description,
-      dueDate: input.dueDate,
-      priority: input.priority,
-      status: 'planned',
-      createdAt: nowIso(),
-      updatedAt: nowIso(),
-    };
-    persistAssignments([...assignmentsState, newAssignment]);
+    const created = await apiFetch<Assignment>('/assignments', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    setAssignmentsState((prev) => [...prev, created]);
   }
-  function updateAssignment(
+
+  async function updateAssignment(
     id: string,
     patch: Partial<Pick<Assignment, 'title' | 'description' | 'dueDate' | 'priority' | 'status'>>,
   ) {
-    const newAssignments = assignmentsState.map((a) =>
-      a.id === id ? { ...a, ...patch, updatedAt: nowIso() } : a,
-    );
-    persistAssignments(newAssignments);
+    const updated = await apiFetch<Assignment>(`/assignments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(patch),
+    });
+    setAssignmentsState((prev) => prev.map((a) => (a.id === id ? updated : a)));
   }
-  function deleteAssignment(id: string) {
-    persistAssignments(assignmentsState.filter((a) => a.id !== id));
+
+  async function deleteAssignment(id: string) {
+    await apiFetch<void>(`/assignments/${id}`, { method: 'DELETE' });
+    setAssignmentsState((prev) => prev.filter((a) => a.id !== id));
   }
+
   const value: DataContextValue = {
     courses,
     assignments,
+    isLoading,
+    error,
+    reload,
     addCourse,
     updateCourse,
     deleteCourse,
