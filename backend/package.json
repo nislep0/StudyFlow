@@ -8,7 +8,11 @@
     "dev": "cd /d %CD% && tsx watch -r dotenv/config src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "echo \"No tests yet\""
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run --dir src",
+    "test:integration": "vitest run --dir test/integration",
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [],
   "author": "",
@@ -24,11 +28,15 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/node": "^24.10.1",
+    "@types/supertest": "^6.0.3",
+    "@vitest/coverage-v8": "^4.0.16",
     "dotenv": "^17.2.3",
     "husky": "^9.1.7",
     "prisma": "^7.2.0",
+    "supertest": "^7.1.4",
     "ts-node-dev": "^2.0.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
   }
 }

@@ -1,37 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../db/prisma.js';
-import type { AssignmentStatus, Priority } from '@prisma/client';
+import { normalizeUuid, normalizeStatus, normalizePriority } from '../utils/validation.js';
 
 export const assignmentsRouter = Router();
-
-const STATUS_VALUES = new Set<AssignmentStatus>(['planned', 'in_progress', 'done']);
-const PRIORITY_VALUES = new Set<Priority>(['low', 'medium', 'high']);
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function normalizeUuid(raw?: string): string | undefined {
-  if (!raw) return undefined;
-  const v = String(raw).trim();
-
-  if (!v || v === 'undefined' || v === 'null' || v === 'all') return undefined;
-
-  return UUID_RE.test(v) ? v : '__invalid__';
-}
-
-function normalizeStatus(raw?: string): AssignmentStatus | undefined {
-  if (!raw) return undefined;
-  const v = String(raw).trim();
-
-  const mapped = v === 'inProgress' ? 'in_progress' : v === 'IN_PROGRESS' ? 'in_progress' : v;
-
-  return STATUS_VALUES.has(mapped as AssignmentStatus) ? (mapped as AssignmentStatus) : undefined;
-}
-
-function normalizePriority(raw?: string): Priority | undefined {
-  if (!raw) return undefined;
-  const v = String(raw).trim().toLowerCase();
-  return PRIORITY_VALUES.has(v as Priority) ? (v as Priority) : undefined;
-}
 
 assignmentsRouter.get('/', async (req, res) => {
   console.log('Assignments query:', req.query);
@@ -39,7 +10,7 @@ assignmentsRouter.get('/', async (req, res) => {
   const userId = req.userId!;
   const { courseId, status } = req.query as { courseId?: string; status?: string };
 
-  const normalizedStatus = normalizeStatus(status);
+  const normalizedStatus = normalizeStatus(status as unknown as string);
   if (status && !normalizedStatus) {
     return res.status(400).json({
       message: `Invalid status '${status}'. Allowed: planned, in_progress, done`,
@@ -49,10 +20,6 @@ assignmentsRouter.get('/', async (req, res) => {
   const normalizedCourseId = normalizeUuid(courseId);
   if (normalizedCourseId === '__invalid__') {
     return res.status(400).json({ message: `Invalid courseId '${courseId}' (must be UUID)` });
-  }
-
-  if (!UUID_RE.test(userId)) {
-    return res.status(400).json({ message: `Invalid x-user-id '${userId}' (must be UUID)` });
   }
 
   const assignments = await prisma.assignment.findMany({
@@ -68,14 +35,18 @@ assignmentsRouter.get('/', async (req, res) => {
 });
 
 assignmentsRouter.post('/', async (req, res) => {
-  console.log('Assignments query:', req.query);
+  console.log('Assignments req.url:', req.url);
+  console.log('Assignments req.query type:', typeof req.query);
+  console.log('Assignments req.query:', req.query);
+  console.log('Assignments x-user-id:', req.header('x-user-id'));
+  console.log('Assignments req.userId:', req.userId);
   const userId = req.userId!;
   const { courseId, title, description, dueDate, priority } = req.body as {
     courseId?: string;
     title?: string;
     description?: string;
     dueDate?: string;
-    priority?: Priority;
+    priority?: string;
   };
   if (!courseId) return res.status(400).json({ message: 'courseId is required' });
   if (!title?.trim()) return res.status(400).json({ message: 'title is required' });
@@ -110,8 +81,8 @@ assignmentsRouter.put('/:id', async (req, res) => {
     title?: string;
     description?: string;
     dueDate?: string;
-    priority?: Priority;
-    status?: AssignmentStatus;
+    priority?: string;
+    status?: string;
   };
   const existing = await prisma.assignment.findFirst({ where: { id, userId } });
   if (!existing) return res.status(404).json({ message: 'assignment not found' });

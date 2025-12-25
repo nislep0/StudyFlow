@@ -38,6 +38,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_BASE: /api
+        VITE_DEMO_USER_ID: "1035904b-ebdc-43af-bb8c-9c99710315ff"
     depends_on:
       - api
     ports:

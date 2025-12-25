@@ -32,7 +32,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const newAuth = { userId: users.id };
     storage.setAuth(newAuth);
     setAuth(newAuth);
-    localStorage.setItem('studyflow_user_id', users.id);
+    const demoId = import.meta.env.VITE_DEMO_USER_ID as string | undefined;
+    if (!demoId) return { ok: false as const, message: 'VITE_DEMO_USER_ID is not set' };
+    localStorage.setItem('studyflow_user_id', demoId);
 
     return { ok: true as const };
   }
@@ -50,7 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const newAuth = { userId: newUser.id };
     storage.setAuth(newAuth);
     setAuth(newAuth);
-    localStorage.setItem('studyflow_user_id', newUser.id);
+    const demoId = import.meta.env.VITE_DEMO_USER_ID as string | undefined;
+    if (!demoId) return { ok: false as const, message: 'VITE_DEMO_USER_ID is not set' };
+    localStorage.setItem('studyflow_user_id', demoId);
     return { ok: true as const };
   }
   function logout() {

@@ -73,6 +73,13 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    if (!user) {
+      setCoursesState([]);
+      setAssignmentsState([]);
+      return;
+    }
+    const apiUserId = localStorage.getItem('studyflow_user_id');
+    if (!apiUserId) return;
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);

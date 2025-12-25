@@ -9,6 +9,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ARG VITE_API_BASE=/api
 ENV VITE_API_BASE=$VITE_API_BASE
+ARG VITE_DEMO_USER_ID
+ENV VITE_DEMO_USER_ID=$VITE_DEMO_USER_ID
 RUN npm run build
 
 FROM nginx:1.27-alpine AS runner
