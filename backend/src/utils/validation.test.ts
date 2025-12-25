@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizePriority, normalizeStatus, normalizeUuid } from './validation';
+import { normalizePriority, normalizeStatus, normalizeUuid } from './validation.js';
 
 describe('validation utils', () => {
   it('normalizeUuid returns undefined for empty/meaningless values', () => {
