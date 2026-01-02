@@ -10,9 +10,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - dbdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U studyflow -d studyflow"]
+      test: ["CMD-SHELL", "pg_isready -U studyflow"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -24,25 +24,27 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://studyflow:studyflow@db:5432/studyflow?schema=public
-      JWT_SECRET: dev_secret_change_me
       PORT: "3000"
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "3000:3000"
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 5 &&
+        npx prisma db push --config=prisma.config.cjs &&
+        node dist/index.js"
 
   web:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_API_BASE: /api
-        VITE_DEMO_USER_ID: "1035904b-ebdc-43af-bb8c-9c99710315ff"
     depends_on:
       - api
     ports:
       - "5173:80"
 
 volumes:
-  dbdata:
+  postgres_data:

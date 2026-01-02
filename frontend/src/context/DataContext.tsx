@@ -1,149 +1,130 @@
-import React, { createContext, useState, useContext, useMemo, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import { apiFetch } from '../shared/api/client';
-import type { Assignment, Courses, Priority } from '../types/domain';
-import { useAuth } from './AuthContext';
+import type { Course, Assignment, AssignmentStatus, Priority } from '../types/domain';
 
-type DataContextValue = {
-  courses: Courses[];
+interface DataContextType {
+  courses: Course[];
   assignments: Assignment[];
   isLoading: boolean;
   error: string | null;
-  reload: () => Promise<void>;
+  refresh: () => Promise<void>;
 
-  addCourse: (name: string, description?: string) => Promise<void>;
-  updateCourse: (
-    id: string,
-    patch: Partial<Pick<Courses, 'name' | 'description'>>,
-  ) => Promise<void>;
+  addCourse: (name: string, description?: string) => Promise<Course>;
+  updateCourse: (id: string, data: Partial<Course>) => Promise<Course>;
   deleteCourse: (id: string) => Promise<void>;
-  addAssignment: (input: {
+
+  addAssignment: (data: {
     courseId: string;
     title: string;
     description?: string;
     dueDate?: string;
-    priority: Priority;
-  }) => Promise<void>;
-  updateAssignment: (
-    id: string,
-    patch: Partial<Pick<Assignment, 'title' | 'description' | 'dueDate' | 'priority' | 'status'>>,
-  ) => Promise<void>;
+    priority?: Priority;
+    status?: AssignmentStatus;
+  }) => Promise<Assignment>;
+
+  updateAssignment: (id: string, data: Partial<Assignment>) => Promise<Assignment>;
   deleteAssignment: (id: string) => Promise<void>;
-};
-const DataContext = createContext<DataContextValue | null>(null);
+}
 
-export function DataProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  const [coursesState, setCoursesState] = useState<Courses[]>([]);
-  const [assignmentsState, setAssignmentsState] = useState<Assignment[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+const DataContext = createContext<DataContextType | undefined>(undefined);
+
+export function DataProvider({ children }: { children: ReactNode }) {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const courses = useMemo(() => {
-    if (!user) return [];
-    return coursesState;
-  }, [coursesState, user]);
-  const assignments = useMemo(() => {
-    if (!user) return [];
-    return assignmentsState;
-  }, [assignmentsState, user]);
 
-  async function reload() {
-    if (!user) {
-      setCoursesState([]);
-      setAssignmentsState([]);
-      return;
-    }
+  const loadData = async () => {
     setIsLoading(true);
     setError(null);
+
     try {
-      const [c, a] = await Promise.all([
-        apiFetch<Courses[]>('/courses'),
+      const [coursesData, assignmentsData] = await Promise.all([
+        apiFetch<Course[]>('/courses'),
         apiFetch<Assignment[]>('/assignments'),
       ]);
-      setCoursesState(c);
-      setAssignmentsState(a);
-    } catch (e: unknown) {
-      if (e instanceof Error) {
-        setError(e?.message ?? 'Failed to load data');
-      } else {
-        setError('unknown error');
-      }
+
+      setCourses(coursesData);
+      setAssignments(assignmentsData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+      console.error('Error loading data:', err);
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    if (!user) {
-      setCoursesState([]);
-      setAssignmentsState([]);
-      return;
-    }
-    const apiUserId = localStorage.getItem('studyflow_user_id');
-    if (!apiUserId) return;
-    void reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+    loadData();
+  }, []);
 
-  async function addCourse(name: string, description?: string) {
-    if (!user) return;
-    const created = await apiFetch<Courses>('/courses', {
+  const addCourse = async (name: string, description?: string): Promise<Course> => {
+    const newCourse = await apiFetch<Course>('/courses', {
       method: 'POST',
       body: JSON.stringify({ name, description }),
     });
-    setCoursesState((prev) => [created, ...prev]);
-  }
 
-  async function updateCourse(id: string, patch: Partial<Pick<Courses, 'name' | 'description'>>) {
-    const updated = await apiFetch<Courses>(`/courses/${id}`, {
+    setCourses((prev) => [newCourse, ...prev]);
+    return newCourse;
+  };
+
+  const updateCourse = async (id: string, data: Partial<Course>): Promise<Course> => {
+    const updated = await apiFetch<Course>(`/courses/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(patch),
+      body: JSON.stringify(data),
     });
-    setCoursesState((prev) => prev.map((c) => (c.id === id ? updated : c)));
-  }
 
-  async function deleteCourse(id: string) {
-    await apiFetch<void>(`/courses/${id}`, { method: 'DELETE' });
-    setCoursesState((prev) => prev.filter((c) => c.id !== id));
-    setAssignmentsState((prev) => prev.filter((a) => a.courseId !== id));
-  }
+    setCourses((prev) => prev.map((course) => (course.id === id ? updated : course)));
+    return updated;
+  };
 
-  async function addAssignment(input: {
+  const deleteCourse = async (id: string): Promise<void> => {
+    await apiFetch(`/courses/${id}`, { method: 'DELETE' });
+    setCourses((prev) => prev.filter((course) => course.id !== id));
+    setAssignments((prev) => prev.filter((assignment) => assignment.courseId !== id));
+  };
+
+  const addAssignment = async (data: {
     courseId: string;
     title: string;
     description?: string;
     dueDate?: string;
-    priority: Priority;
-  }) {
-    if (!user) return;
-    const created = await apiFetch<Assignment>('/assignments', {
+    priority?: Priority;
+    status?: AssignmentStatus;
+  }): Promise<Assignment> => {
+    const newAssignment = await apiFetch<Assignment>('/assignments', {
       method: 'POST',
-      body: JSON.stringify(input),
+      body: JSON.stringify(data),
     });
-    setAssignmentsState((prev) => [...prev, created]);
-  }
 
-  async function updateAssignment(
-    id: string,
-    patch: Partial<Pick<Assignment, 'title' | 'description' | 'dueDate' | 'priority' | 'status'>>,
-  ) {
+    setAssignments((prev) => [...prev, newAssignment]);
+    return newAssignment;
+  };
+
+  const updateAssignment = async (id: string, data: Partial<Assignment>): Promise<Assignment> => {
     const updated = await apiFetch<Assignment>(`/assignments/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(patch),
+      body: JSON.stringify(data),
     });
-    setAssignmentsState((prev) => prev.map((a) => (a.id === id ? updated : a)));
-  }
 
-  async function deleteAssignment(id: string) {
-    await apiFetch<void>(`/assignments/${id}`, { method: 'DELETE' });
-    setAssignmentsState((prev) => prev.filter((a) => a.id !== id));
-  }
+    setAssignments((prev) =>
+      prev.map((assignment) => (assignment.id === id ? updated : assignment)),
+    );
+    return updated;
+  };
 
-  const value: DataContextValue = {
+  const deleteAssignment = async (id: string): Promise<void> => {
+    await apiFetch(`/assignments/${id}`, { method: 'DELETE' });
+    setAssignments((prev) => prev.filter((assignment) => assignment.id !== id));
+  };
+
+  const value: DataContextType = {
     courses,
     assignments,
     isLoading,
     error,
-    reload,
+    refresh: loadData,
     addCourse,
     updateCourse,
     deleteCourse,
@@ -151,10 +132,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     updateAssignment,
     deleteAssignment,
   };
+
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
+
 export function useData() {
   const context = useContext(DataContext);
-  if (!context) throw new Error('useData must be used within a DataProvider');
+  if (context === undefined) {
+    throw new Error('useData must be used within a DataProvider');
+  }
   return context;
 }

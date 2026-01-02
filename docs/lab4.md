@@ -6,14 +6,21 @@
 
 ## Мета роботи
 
-Метою лабораторної роботи є:
-
-- інтеграція застосунку **StudyFlow** з віддаленим джерелом даних;
-- заміна статичних даних (LocalStorage) на реальну роботу з базою даних;
-- реалізація повноцінного backend API для доступу до даних;
-- перевірка коректної взаємодії frontend <-> backend <-> database.
+Метою лабораторної роботи є підключення застосунку StudyFlow до реальної бази даних, заміна статичних даних на роботу з БД, а також реалізація backend API для зберігання та отримання інформації про курси і завдання.
 
 ---
+
+## Загальний опис виконаної роботи
+
+У попередній лабораторній роботі (Lab 3) застосунок працював зі статичними даними, які зберігались на стороні клієнта.
+У межах Lab 4 було реалізовано повноцінну інтеграцію з віддаленим джерелом даних - PostgreSQL.
+Для цього був створений backend на Node.js з використанням Express та Prisma ORM, а також налаштовано Docker Compose для запуску всієї системи.
+
+### Примітка
+
+На цьому етапі з проєкту була видалена авторизація.
+Під час реалізації виникли проблеми з коректною інтеграцією механізму авторизації разом із Prisma та Docker-оточенням.
+Оскільки основною метою лабораторної роботи 4 є саме інтеграція з базою даних, було прийнято рішення тимчасово зосередитись на CRUD-операціях і стабільній роботі з БД без авторизації.
 
 ## Архітектура рішення
 
@@ -35,7 +42,7 @@ Frontend звертається до backend через REST API. Backend вик
 
 ### PostgreSQL + Docker
 
-Для розгортання бази даних використовується Docker Compose.
+Для розгортання бази даних використовується Docker Compose, що дозволяє легко запускати весь проєкт локально.
 
 ```yaml
 version: '3.9'
@@ -50,9 +57,9 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      - dbdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U studyflow -d studyflow']
+      test: ['CMD-SHELL', 'pg_isready -U studyflow']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -64,33 +71,36 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://studyflow:studyflow@db:5432/studyflow?schema=public
-      JWT_SECRET: dev_secret_change_me
       PORT: '3000'
     depends_on:
       db:
         condition: service_healthy
     ports:
       - '3000:3000'
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 5 &&
+        npx prisma migrate deploy --config=prisma.config.cjs &&
+        node dist/index.js"
 
   web:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_API_BASE: /api
     depends_on:
       - api
     ports:
       - '5173:80'
 
 volumes:
-  dbdata:
+  postgres_data:
 ```
 
 Запуск системи:
 
 ```bash
-docker compose build --no-cache api
+docker compose build --no-cache
 docker compose up -d
 ```
 
@@ -121,49 +131,32 @@ enum Priority {
   high
 }
 
-model User {
-  id String @id @default(uuid())
-  email String @unique
-  passwordHash String
-  fullName String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  courses Course[]
-  assignments Assignment[]
-}
-
 model Course {
-  id String @id @default(uuid())
-  userId String
-  name String
+  id          String      @id @default(uuid())
+  name        String
   description String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   assignments Assignment[]
 
-  @@index([userId])
+  @@map("courses")
 }
 
 model Assignment {
-  id String @id @default(uuid())
-  userId String
-  courseId String
-  title String
+  id          String           @id @default(uuid())
+  courseId    String
+  title       String
   description String?
-  status AssignmentStatus @default(planned)
-  priority Priority @default(medium)
-  dueDate DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status      AssignmentStatus @default(planned)
+  priority    Priority         @default(medium)
+  dueDate     DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
   @@index([courseId])
+  @@map("assignments")
 }
 ```
 
@@ -171,37 +164,23 @@ model Assignment {
 
 ## Backend API
 
-### Авторизація (тимчасова)
-
-Для Lab4 використовується спрощена авторизація через HTTP-заголовок:
-
-```
-x-user-id: <USER_ID>
-```
-
-Цей ідентифікатор використовується backend для фільтрації даних конкретного користувача.
-
----
+Backend реалізує REST API для роботи з курсами та завданнями.
 
 ### Courses API
 
-| Метод  | Шлях             | Опис                       |
-| ------ | ---------------- | -------------------------- |
-| GET    | /api/courses     | Отримати курси користувача |
-| POST   | /api/courses     | Створити курс              |
-| PUT    | /api/courses/:id | Оновити курс               |
-| DELETE | /api/courses/:id | Видалити курс              |
-
----
+- GET /api/courses — отримати список курсів
+- POST /api/courses — створити новий курс
+- PUT /api/courses/:id — оновити курс
+- DELETE /api/courses/:id — видалити курс
 
 ### Assignments API
 
-| Метод  | Шлях                 | Опис              |
-| ------ | -------------------- | ----------------- |
-| GET    | /api/assignments     | Отримати завдання |
-| POST   | /api/assignments     | Створити завдання |
-| PUT    | /api/assignments/:id | Оновити завдання  |
-| DELETE | /api/assignments/:id | Видалити завдання |
+- GET /api/assignments — отримати список завдань
+- POST /api/assignments — створити нове завдання
+- PUT /api/assignments/:id — оновити завдання
+- DELETE /api/assignments/:id — видалити завдання
+
+API працює без авторизації, що дозволяє зосередитись на коректній роботі з базою даних.
 
 ---
 
@@ -216,27 +195,6 @@ x-user-id: <USER_ID>
 ---
 
 ## Frontend інтеграція
-
-### API client
-
-```ts
-export async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
-  const userId = localStorage.getItem('studyflow_user_id');
-
-  const res = await fetch(`http://localhost:3000/api${path}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(userId ? { 'x-user-id': userId } : {}),
-      ...(opts?.headers ?? {}),
-    },
-  });
-
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
-}
-```
 
 ### DataContext
 
@@ -264,7 +222,7 @@ GET /health
 
 ### Тестування через PowerShell
 
-Для тестування використовувався `Invoke-RestMethod` з передачею заголовка `x-user-id`.
+Для тестування використовувався локально запущена через Docker Compose система.
 
 Перевірялись сценарії:
 
@@ -287,4 +245,5 @@ GET /health
 
 ## Висновок
 
-У межах лабораторної роботи №4 було реалізовано інтеграцію з віддаленим джерелом даних PostgreSQL, створено backend API з використанням Express та Prisma, а також виконано заміну статичних даних на реальні. Отримане рішення забезпечує повноцінну клієнт-серверну взаємодію та підготовлене до подальшого тестування і розгортання.
+У межах лабораторної роботи 4 було реалізовано інтеграцію з віддаленим джерелом даних PostgreSQL, створено backend API з використанням Express та Prisma, а також виконано заміну статичних даних на реальні.
+Отримане рішення забезпечує повноцінну клієнт-серверну взаємодію та підготовлене до подальшого тестування і розгортання.

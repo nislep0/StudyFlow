@@ -1,125 +1,122 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { prisma } from '../db/prisma.js';
-import { normalizeUuid, normalizeStatus, normalizePriority } from '../utils/validation.js';
 
 export const assignmentsRouter = Router();
 
-assignmentsRouter.get('/', async (req, res) => {
-  console.log('Assignments query:', req.query);
+assignmentsRouter.get('/', async (req: Request, res: Response) => {
+  try {
+    const { courseId, status } = req.query;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = {};
 
-  const userId = req.userId!;
-  const { courseId, status } = req.query as { courseId?: string; status?: string };
+    if (courseId && typeof courseId === 'string') {
+      where.courseId = courseId;
+    }
 
-  const normalizedStatus = normalizeStatus(status as unknown as string);
-  if (status && !normalizedStatus) {
-    return res.status(400).json({
-      message: `Invalid status '${status}'. Allowed: planned, in_progress, done`,
+    if (
+      status &&
+      typeof status === 'string' &&
+      ['planned', 'in_progress', 'done'].includes(status)
+    ) {
+      where.status = status;
+    }
+
+    const assignments = await prisma.assignment.findMany({
+      where,
+      orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }],
     });
+
+    res.json(assignments);
+  } catch (error) {
+    console.error('Error fetching assignments:', error);
+    res.status(500).json({ message: 'Failed to fetch assignments' });
   }
-
-  const normalizedCourseId = normalizeUuid(courseId);
-  if (normalizedCourseId === '__invalid__') {
-    return res.status(400).json({ message: `Invalid courseId '${courseId}' (must be UUID)` });
-  }
-
-  const assignments = await prisma.assignment.findMany({
-    where: {
-      userId,
-      ...(normalizedCourseId ? { courseId: normalizedCourseId } : {}),
-      ...(normalizedStatus ? { status: normalizedStatus } : {}),
-    },
-    orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }],
-  });
-
-  res.json(assignments);
 });
 
-assignmentsRouter.post('/', async (req, res) => {
-  console.log('Assignments req.url:', req.url);
-  console.log('Assignments req.query type:', typeof req.query);
-  console.log('Assignments req.query:', req.query);
-  console.log('Assignments x-user-id:', req.header('x-user-id'));
-  console.log('Assignments req.userId:', req.userId);
-  const userId = req.userId!;
-  const { courseId, title, description, dueDate, priority } = req.body as {
-    courseId?: string;
-    title?: string;
-    description?: string;
-    dueDate?: string;
-    priority?: string;
-  };
-  if (!courseId) return res.status(400).json({ message: 'courseId is required' });
-  if (!title?.trim()) return res.status(400).json({ message: 'title is required' });
-  const course = await prisma.course.findFirst({ where: { id: courseId, userId } });
-  if (!course) return res.status(403).json({ message: 'course does not belong to user' });
+assignmentsRouter.post('/', async (req: Request, res: Response) => {
+  try {
+    const { courseId, title, description, dueDate, priority, status } = req.body;
 
-  const normalizedPriority = normalizePriority(priority as unknown as string);
-  if (priority && !normalizedPriority) {
-    return res.status(400).json({
-      message: `Invalid priority '${priority}'.Allowed: low, medium, high`,
+    if (!courseId || typeof courseId !== 'string') {
+      return res.status(400).json({ message: 'Course ID is required' });
+    }
+
+    if (!title?.trim()) {
+      return res.status(400).json({ message: 'Title is required' });
+    }
+
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    const assignment = await prisma.assignment.create({
+      data: {
+        courseId,
+        title: title.trim(),
+        description: description?.trim() || null,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        priority: priority || 'medium',
+        status: status || 'planned',
+      },
     });
-  }
 
-  const assignment = await prisma.assignment.create({
-    data: {
-      userId,
-      courseId,
-      title: title.trim(),
-      description: description?.trim() || null,
-      dueDate: dueDate ? new Date(dueDate) : null,
-      priority: normalizedPriority ?? 'medium',
-    },
-  });
-  res.status(201).json(assignment);
+    res.status(201).json(assignment);
+  } catch (error) {
+    console.error('Error creating assignment:', error);
+    res.status(500).json({ message: 'Failed to create assignment' });
+  }
 });
 
-assignmentsRouter.put('/:id', async (req, res) => {
-  console.log('Assignments query:', req.query);
-  const userId = req.userId!;
-  const { id } = req.params;
-  const { title, description, dueDate, priority, status } = req.body as {
-    title?: string;
-    description?: string;
-    dueDate?: string;
-    priority?: string;
-    status?: string;
-  };
-  const existing = await prisma.assignment.findFirst({ where: { id, userId } });
-  if (!existing) return res.status(404).json({ message: 'assignment not found' });
+assignmentsRouter.put('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { title, description, dueDate, priority, status } = req.body;
 
-  const normalizedStatus = normalizeStatus(status);
+    if (!id) {
+      return res.status(400).json({ error: 'ID is important' });
+    }
 
-  if (status && !normalizedStatus) {
-    return res.status(400).json({
-      message: `Invalid status '${status}'.Allowed: planned, in_progress, done`,
+    const existing = await prisma.assignment.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ message: 'Assignment not found' });
+    }
+
+    const assignment = await prisma.assignment.update({
+      where: { id },
+      data: {
+        title: title !== undefined ? title.trim() : existing.title,
+        description: description !== undefined ? description?.trim() || null : existing.description,
+        dueDate: dueDate !== undefined ? (dueDate ? new Date(dueDate) : null) : existing.dueDate,
+        priority: priority || existing.priority,
+        status: status || existing.status,
+      },
     });
-  }
 
-  const normalizedPriority = normalizePriority(priority as unknown as string);
-  if (priority && !normalizedPriority) {
-    return res.status(400).json({
-      message: `Invalid priority '${priority}'.Allowed: low, medium, high`,
-    });
+    res.json(assignment);
+  } catch (error) {
+    console.error('Error updating assignment:', error);
+    res.status(500).json({ message: 'Failed to update assignment' });
   }
-
-  const updated = await prisma.assignment.update({
-    where: { id },
-    data: {
-      title: title !== undefined ? title.trim() || existing.title : existing.title,
-      description: description !== undefined ? description.trim() || null : existing.description,
-      dueDate: dueDate !== undefined ? (dueDate ? new Date(dueDate) : null) : existing.dueDate,
-      priority: normalizedPriority ?? existing.priority,
-      status: normalizedStatus ?? existing.status,
-    },
-  });
-  res.json(updated);
 });
 
-assignmentsRouter.delete('/:id', async (req, res) => {
-  const userId = req.userId!;
-  const { id } = req.params;
-  const existing = await prisma.assignment.findFirst({ where: { id, userId } });
-  if (!existing) return res.status(404).json({ message: 'assignment not found' });
-  await prisma.assignment.delete({ where: { id } });
-  res.status(204).send();
+assignmentsRouter.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: 'ID is important' });
+    }
+
+    const existing = await prisma.assignment.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ message: 'Assignment not found' });
+    }
+
+    await prisma.assignment.delete({ where: { id } });
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting assignment:', error);
+    res.status(500).json({ message: 'Failed to delete assignment' });
+  }
 });

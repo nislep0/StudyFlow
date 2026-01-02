@@ -1,24 +1,18 @@
-export type ID = string;
 export type AssignmentStatus = 'planned' | 'in_progress' | 'done';
 export type Priority = 'low' | 'medium' | 'high';
-export type User = {
-  id: ID;
-  email: string;
-  password: string;
-  fullName?: string;
-};
-export type Courses = {
-  id: ID;
-  userId: ID;
+
+export interface Course {
+  id: string;
   name: string;
   description?: string;
   createdAt: string;
   updatedAt: string;
-};
-export type Assignment = {
-  id: ID;
-  userId: ID;
-  courseId: ID;
+  assignments?: Assignment[];
+}
+
+export interface Assignment {
+  id: string;
+  courseId: string;
   title: string;
   description?: string;
   status: AssignmentStatus;
@@ -26,4 +20,5 @@ export type Assignment = {
   dueDate?: string;
   createdAt: string;
   updatedAt: string;
-};
+  course?: { name: string };
+}
