@@ -109,6 +109,8 @@ npm run dev
 - **email:** [demo@studyflow.local](mailto:demo@studyflow.local)
 - **password:** demo1234
 
+### Для запуску необхідно створити .env на основі .env.example
+
 ---
 
 ## Висновок

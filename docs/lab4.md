@@ -208,6 +208,8 @@ Frontend використовує `DataContext`, який:
 
 ## Тестування backend
 
+### Для запуску необхідно створити .env на основі .env.example
+
 ### Перевірка health endpoint
 
 ```bash
