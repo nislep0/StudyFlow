@@ -14,7 +14,7 @@
     "format": "npm -w frontend run format && npm -w backend run format",
     "format:fix": "npm -w frontend run format:fix && npm -w backend run format:fix",
     "test": "npm -w backend run test",
-    "test:integration": "npm -w backend run test:integration",
+    "test:integration": "npm -w backend run test:integration:run",
     "test:e2e": "npm -w backend run test:e2e:run",
     "test:all": "npm -w backend run test:all",
     "build": "npm -w frontend run build && npm -w backend run build"
