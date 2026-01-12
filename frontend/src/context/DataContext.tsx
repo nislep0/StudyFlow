@@ -135,7 +135,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
-
+/* eslint-disable react-refresh/only-export-components */
 export function useData() {
   const context = useContext(DataContext);
   if (context === undefined) {
