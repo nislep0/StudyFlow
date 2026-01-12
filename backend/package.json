@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
-    "test": "vitest run",
+    "test": "vitest run --dir src",
     "test:watch": "vitest",
     "test:unit": "vitest run --dir src",
     "test:integration": "vitest run --dir test/integration",
