@@ -9,7 +9,6 @@
     "backend"
   ],
   "scripts": {
-    "prepare": "husky",
     "lint": "npm -w frontend run lint && npm -w backend run lint",
     "format": "npm -w frontend run format && npm -w backend run format",
     "format:fix": "npm -w frontend run format:fix && npm -w backend run format:fix",
